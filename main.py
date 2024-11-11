@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, status
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, status
 from fastapi.responses import JSONResponse
 from typing import List
 import asyncio
@@ -10,17 +10,20 @@ from PIL import Image
 import io
 import timm
 
-# En la configuración de FastAPI
+# Crear el router principal
+router = APIRouter(prefix="/soil-analysis", tags=["soil analysis"])
+
+# Crear la aplicación FastAPI
 app = FastAPI(
     title="Análisis de Suelos API",
     description="API para analizar suelos",
     version="1.0.0"
 )
 
-# Agregar límite de tamaño a nivel de FastAPI
+# Los middlewares se mantienen en la app principal
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"]  # Ajustar según necesidades
+    allowed_hosts=["*"]
 )
 
 @app.middleware("http")
@@ -165,7 +168,8 @@ MAX_IMAGES = 15  # Máximo número de imágenes por petición
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB por imagen
 SUPPORTED_FORMATS = {'image/jpeg', 'image/png'}
 
-@app.post("/predict")
+# Mover los endpoints al router
+@router.post("/predict")
 async def predict_multiple(files: List[UploadFile] = File(...)):
     if not files:
         raise HTTPException(
@@ -268,7 +272,7 @@ async def predict_multiple(files: List[UploadFile] = File(...)):
             }
         )
 
-@app.get("/")
+@router.get("/")
 async def root():
     return {
         "message": "API de Análisis de Suelos",
@@ -278,7 +282,7 @@ async def root():
         }
     } 
     
-@app.get("/health")
+@router.get("/health")
 async def health_check():
     """Endpoint para verificar que el servicio está funcionando"""
     try:
@@ -294,3 +298,6 @@ async def health_check():
             "status": "unhealthy",
             "error": str(e)
         }
+
+# Incluir el router en la app
+app.include_router(router)
